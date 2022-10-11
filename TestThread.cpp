@@ -9,26 +9,56 @@
 #include "Object.h"
 
 using namespace std;
+using namespace chrono_literals;
 
 mutex mut;
 condition_variable cv;
 static bool finished{false};
 static int count_nodes{8};
+vector<thread> nodes;
+vector<thread_obj> objects;
+
+void manager(size_t length)
+{
+	while (finished)
+	{
+		this_thread::sleep_for(100ms);
+		for (auto& i : objects)
+		{
+			if (i.get_completed())
+			{
+				lock_guard<mutex> lm{ mut };
+				objects.push_back(i);
+				objects.pop_back();
+			}
+		}
+		if (objects.size() == 0)
+		{
+			finished = true;
+		}
+	}
+};
+
+void node_function(int create_number = 25, int sub_event = 20, int unsub_event = 15, int create_node = 15, int nothing = 25)
+{
+	thread_obj object = thread_obj();
+
+	while (!object.get_completed())
+	{
+
+	}
+}
 
 int main()
-{	
-	thread nodes_manager;
-	vector<thread> nodes;
+{
+	thread nodes_manager(manager, nodes.size());
 
 	for (int i = 0; i < count_nodes; i++)
 	{
 		nodes.emplace_back();
 	}
 	//Run
-	while (finished)
-	{
-
-	}
+	nodes_manager.join();
 }
 
 // Запуск программы: CTRL+F5 или меню "Отладка" > "Запуск без отладки"
