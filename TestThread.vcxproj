@@ -131,7 +131,9 @@
     <ClCompile Include="TestThread.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Data.h" />
     <ClInclude Include="Object.h" />
+    <ClInclude Include="TestThread.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

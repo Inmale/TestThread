@@ -1,11 +1,6 @@
 ﻿// TestThread.cpp : Этот файл содержит функцию "main". Здесь начинается и заканчивается выполнение программы.
 //
 
-#include <iostream>
-#include <thread>
-#include <condition_variable>
-#include <mutex>
-#include <vector>
 #include "Object.h"
 
 using namespace std;
@@ -13,16 +8,16 @@ using namespace chrono_literals;
 
 mutex mut;
 condition_variable cv;
-static bool finished{false};
-static int count_nodes{8};
 vector<thread> nodes;
 vector<thread_obj> objects;
 
 void manager(size_t length)
 {
-	while (finished)
+	while (!finished)
 	{
+		//delay
 		this_thread::sleep_for(100ms);
+		//delete object if completed
 		for (auto& i : objects)
 		{
 			if (i.get_completed())
@@ -32,21 +27,46 @@ void manager(size_t length)
 				objects.pop_back();
 			}
 		}
-		if (objects.size() == 0)
+		if (objects.size() < 2)
 		{
 			finished = true;
 		}
 	}
-};
+}
 
-void node_function(int create_number = 25, int sub_event = 20, int unsub_event = 15, int create_node = 15, int nothing = 25)
+void node_function(size_t id)
 {
-	thread_obj object = thread_obj();
+	thread_obj object = thread_obj(id);
+	objects.emplace_back(object);
 
 	while (!object.get_completed())
 	{
-
+		cout << object.getID() << "\n";
+		this_thread::sleep_for(1000ms);
 	}
+}
+
+int random_chance()
+{
+	return int(rand() % 100 + 1);
+}
+
+bool event_happend(int chance)
+{
+	if (random_chance() < chance)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
+	}
+}
+
+thread_obj& get_random_object()
+{
+	size_t i = (rand() % (objects.size()));
+	return objects[i];
 }
 
 int main()
@@ -55,10 +75,14 @@ int main()
 
 	for (int i = 0; i < count_nodes; i++)
 	{
-		nodes.emplace_back();
+		nodes.emplace_back(node_function, i);
 	}
 	//Run
 	nodes_manager.join();
+	for (auto& i : nodes)
+	{
+		i.join();
+	}
 }
 
 // Запуск программы: CTRL+F5 или меню "Отладка" > "Запуск без отладки"
