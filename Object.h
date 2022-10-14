@@ -4,36 +4,39 @@
 #include <random>
 #include "Data.h"
 
+
 class thread_obj
 {
+	bool valid;
 	bool completed{ false };
-	size_t id{0};
+	std::thread::id id;
 
-	void print_data(const size_t subID,const size_t id, const nodeData& data);
+	void print_data(const std::thread::id subID,const std::thread::id id, const nodeData* data);
 
 public:
 	std::vector<nodeData> data;
+	std::vector<std::thread::id> subscriptions; //List of subscribers
 
-	std::vector<thread_obj> subscriptions;
+	//Constructors
+	thread_obj(std::thread::id ID) : id{ ID }, valid{true} {};
+	thread_obj() : valid{false} {};
 
-	thread_obj(size_t ID) { id = ID; };
-
+	//Getters
+	bool is_valid();
 	bool get_completed();
-
-	size_t getID();
-
-	nodeData& get_found_data(size_t id);
+	std::thread::id getID();
+	nodeData& get_found_data(std::thread::id id);
 
 //Events
 	//1
 	void get_random_number();
 
 	//2
-	bool subscribe();
+	bool subscribe(thread_obj& subscription);
 
 	//3
-	bool unsubscribe();
-
-	//4
-	bool new_node();
+	bool unsubscribe(thread_obj* subscription);
 };
+
+thread_obj& get_random_object();
+thread_obj* get_sub_object(size_t id);

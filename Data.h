@@ -1,8 +1,14 @@
 #pragma once
-
+#include <thread>
 struct nodeData
 {
-	size_t id{0};
-	int data{0};
-	size_t count{0};
+	nodeData()
+	{
+		data = 0;
+		count = 0;
+	}
+	nodeData(std::thread::id ID) : id{ ID }, data{ 0 }, count{0} {}
+	std::thread::id id;
+	int data;
+	size_t count;
 };
