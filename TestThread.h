@@ -6,6 +6,7 @@
 #include <mutex>
 #include <vector>
 #include <memory>
+#include <algorithm>
 
 static  std::mutex m;
 static bool finished{ false };
@@ -20,4 +21,4 @@ void node_function(std::thread::id id);
 bool new_node();
 int random_chance();
 bool event_happend(int chance);
-void add_data(std::thread::id id_sub, std::thread::id id, int value);
+void add_data(std::thread::id id_obj, std::thread::id id_data, int value);

@@ -9,9 +9,9 @@ class thread_obj
 {
 	bool valid;
 	bool completed{ false };
-	std::thread::id id;
+	std::thread::id id{};
 
-	void print_data(const std::thread::id subID,const std::thread::id id, const nodeData* data);
+	void print_data(const std::thread::id subID,const std::thread::id id, nodeData& data);
 
 public:
 	std::vector<nodeData> data;
@@ -35,8 +35,14 @@ public:
 	bool subscribe(thread_obj& subscription);
 
 	//3
-	bool unsubscribe(thread_obj* subscription);
+	void unsubscribe(thread_obj& subscription);
 };
 
 thread_obj& get_random_object();
-thread_obj* get_sub_object(size_t id);
+thread_obj& get_sub_object(std::thread::id id);
+thread_obj& get_id_object(std::thread::id id);
+nodeData& get_data_object(std::thread::id id_ob, std::thread::id id_data);
+void create_object(std::thread::id id);
+void remove_subscriber(std::thread::id id_subscriber, std::thread::id id_subscription);
+void remove_object(std::thread::id id);
+void add_sub_data(thread_obj& subscription, thread_obj& subscriber);

@@ -1,11 +1,8 @@
 #include "Object.h"
 
-void thread_obj::print_data(const std::thread::id subID, const std::thread::id id, const nodeData* data)
+void thread_obj::print_data(const std::thread::id subID, const std::thread::id id, nodeData& data)
 {   
-    if (data != nullptr)
-    {
-        std::cout << id << "-->" << subID << ": " << "S= " << data->data << "  " << id << "-->" << subID << ": " << "N= " << data->count << "\n";
-    }
+     std::cout << id << "-->" << subID << ": " << "S= " << data.data << "  " << id << "-->" << subID << ": " << "N= " << data.count << "\n";
 }
 
 bool thread_obj::get_completed()
@@ -27,14 +24,9 @@ nodeData& thread_obj::get_found_data(std::thread::id id)
 {
     if (data.size() > 0)
     {
-        for (size_t i = 0; i < data.size(); i++)
-        {
-            if (data[i].id == id)
-            {
-                nodeData& temp = data[i];
-                return temp;
-            }
-        }
+        const auto pred([&](nodeData& i) {return i.id == id; });
+        const auto temp(std::find_if(std::begin(data), std::end(data), pred));
+        return *temp;
     }
 }
 
@@ -44,28 +36,24 @@ void thread_obj::get_random_number()
      for (auto& i : subscriptions)
      {
          add_data(i, id, data);
+         print_data(i, id, get_data_object(i, id));
      }
 }
-////////////////////////////////////////////////////
+
 bool thread_obj::subscribe(thread_obj& subscription)
 {
-    {
-        subscription.subscriptions.emplace_back(*this);
-        this->data.emplace_back(subscription.getID());
+        add_sub_data(subscription, *this);
         return true;
-    }
 }
 
-bool thread_obj::unsubscribe(thread_obj* subscription)
+void thread_obj::unsubscribe(thread_obj& subscription)
 {
-    if (subscription != nullptr)
+    std::thread::id id;
+    if (data.size() > 0)
     {
-        subscription->subscriptions.push_back(*this);
-        subscription->subscriptions.pop_back();
-        return true;
-    }
-    else
-    {
-        return false;
+        const auto _end(std::end(data));
+        id = _end->id;
+        data.erase(_end);
+        remove_subscriber(this->getID(),id);
     }
 }
