@@ -27,15 +27,38 @@ void manager()
 				objects.pop_back();
 			}
 		}
-		if (objects.size() < 2)
-		{
-			finished = true;
-		}
 	}
 }
 
-void node_function(std::thread::id id)
+size_t get_new_free_id()
 {
+	lock_guard<mutex> mh{ mut };
+	size_t i_count{0};
+	if (objects.size() > 0)
+	{
+		auto pred([&](thread_obj& obj) {return obj.getID() != i_count; });
+		auto found_obj(find_if(begin(objects), end(objects), pred));
+		if (found_obj != objects.end())
+		{
+			return i_count;
+		}
+		i_count++;
+		if (i_count > 99)
+		{
+			finished = true;
+			return i_count;
+		}
+	}
+	else
+	{
+		return 0;
+	}
+}
+
+void node_function(size_t id)
+{
+	create_object(id);
+	thread_obj& object = get_id_object(id);
 	while (!object.get_completed())
 	{
 		if (event_happend(25))
@@ -54,22 +77,21 @@ void node_function(std::thread::id id)
 		{
 
 		}
+		cout << id << "\n";
+		this_thread::sleep_for(200ms);
 	}
 }
 /////////////////////////////////////
 bool new_node()
 {
-	{
-		unique_ptr<thread> temp(new thread{});
-		std::thread::id id_thread (temp->get_id());
-		*temp = (thread{node_function, id_thread});
-		nodes.emplace_back(std::move(*temp));
+	unique_ptr<thread> temp(new thread{ node_function, get_new_free_id()});
+	std::thread::id id_thread (temp->get_id());
+	nodes.emplace_back(std::move(*temp));
 		
-		const auto pred([&](thread& node) {return node.get_id() == id_thread; });
-		auto found_node(find_if(begin(nodes), end(nodes), pred));
-		found_node->join();
-		return true;
-	}
+	const auto pred([&](thread& node) {return node.get_id() == id_thread; });
+	auto found_node(find_if(begin(nodes), end(nodes), pred));
+	found_node->detach();
+	return true;
 }
 
 int random_chance()					
@@ -88,7 +110,7 @@ bool event_happend(int chance)
 		return false;				
 	}
 }
-void add_data(std::thread::id id_obj, std::thread::id id_data, int value) 
+void add_data(size_t id_obj, size_t id_data, int value)
 {
 	nodeData& data (get_data_object(id_obj, id_data));					
 	{
@@ -109,7 +131,7 @@ thread_obj& get_random_object()
 	}
 }
 
-thread_obj& get_sub_object(std::thread::id id)
+thread_obj& get_sub_object(size_t id)
 {
 	if (objects.size() > 1)
 	{
@@ -129,14 +151,14 @@ thread_obj& get_sub_object(std::thread::id id)
 		
 	}
 }
-thread_obj& get_id_object(std::thread::id id)
+thread_obj& get_id_object(size_t id)
 {
 	const auto pred([&](thread_obj& i) {return i.getID() == id; });
 	const auto found_obj(find_if(begin(objects), end(objects), pred));
 	return *found_obj;
 }
 
-nodeData& get_data_object(std::thread::id id_ob, std::thread::id id_data)
+nodeData& get_data_object(size_t id_ob, size_t id_data)
 {
 	const auto pred_data([&](nodeData& j) {return j.id == id_data; });
 	auto& temp (get_id_object(id_ob));
@@ -144,21 +166,20 @@ nodeData& get_data_object(std::thread::id id_ob, std::thread::id id_data)
 	return *found_data;
 }
 
-void create_object(std::thread::id id)
+void create_object(size_t id)
 {
-	lock_guard<mutex> mn{mut};
-	objects.emplace_back(id);
+	objects.emplace_back(move(thread_obj(id)));
 }
 
-void remove_subscriber(std::thread::id id_subscriber, std::thread::id id_subscription)
+void remove_subscriber(size_t id_subscriber, size_t id_subscription)
 {
 	thread_obj& temp(get_id_object(id_subscription));
 
-	const auto pred([&](thread_obj& obj) {return obj.getID() == id_subscriber; });
+	const auto pred([&](size_t& id) {return id == id_subscriber; });
 	const auto found_obj(find_if(begin(temp.subscriptions), end(temp.subscriptions), pred));
 }
 
-void remove_object(std::thread::id id)
+void remove_object(size_t id)
 {
 	lock_guard<mutex> mu{ mut };
 	auto pred([&](thread_obj& i) {return i.getID() == id; });
@@ -177,15 +198,15 @@ int main()
 {
 	thread nodes_manager(manager);
 
-	for (int i = 0; i < count_nodes; i++)
+	for (size_t i = 0; i < count_nodes; i++)
 	{
-		new_node();
+		nodes.emplace_back(node_function, i);
 	}
 	//Run
 	nodes_manager.join();
 	for (auto& i : nodes)
 	{
-		i.join();
+		i.detach();
 	}
 }
 

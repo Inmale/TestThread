@@ -9,23 +9,23 @@ class thread_obj
 {
 	bool valid;
 	bool completed{ false };
-	std::thread::id id{};
+	size_t id{0};
 
-	void print_data(const std::thread::id subID,const std::thread::id id, nodeData& data);
+	void print_data(const size_t subID,const size_t id, nodeData& data);
 
 public:
 	std::vector<nodeData> data;
-	std::vector<std::thread::id> subscriptions; //List of subscribers
+	std::vector<size_t> subscriptions; //List of subscribers
 
 	//Constructors
-	thread_obj(std::thread::id ID) : id{ ID }, valid{true} {};
+	thread_obj(size_t ID) : id{ ID }, valid{true} {};
 	thread_obj() : valid{false} {};
 
 	//Getters
 	bool is_valid();
 	bool get_completed();
-	std::thread::id getID();
-	nodeData& get_found_data(std::thread::id id);
+	size_t getID();
+	nodeData& get_found_data(size_t id);
 
 //Events
 	//1
@@ -39,10 +39,10 @@ public:
 };
 
 thread_obj& get_random_object();
-thread_obj& get_sub_object(std::thread::id id);
-thread_obj& get_id_object(std::thread::id id);
-nodeData& get_data_object(std::thread::id id_ob, std::thread::id id_data);
-void create_object(std::thread::id id);
-void remove_subscriber(std::thread::id id_subscriber, std::thread::id id_subscription);
-void remove_object(std::thread::id id);
+thread_obj& get_sub_object(size_t id);
+thread_obj& get_id_object(size_t id);
+nodeData& get_data_object(size_t id_ob, size_t id_data);
+void create_object(size_t id);
+void remove_subscriber(size_t id_subscriber, size_t id_subscription);
+void remove_object(size_t id);
 void add_sub_data(thread_obj& subscription, thread_obj& subscriber);

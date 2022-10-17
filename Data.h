@@ -7,8 +7,8 @@ struct nodeData
 		data = 0;
 		count = 0;
 	}
-	nodeData(std::thread::id ID) : id{ ID }, data{ 0 }, count{0} {}
-	std::thread::id id;
+	nodeData(size_t ID) : id{ ID }, data{ 0 }, count{0} {}
+	size_t id;
 	int data;
 	size_t count;
 };

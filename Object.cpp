@@ -1,6 +1,6 @@
 #include "Object.h"
 
-void thread_obj::print_data(const std::thread::id subID, const std::thread::id id, nodeData& data)
+void thread_obj::print_data(const size_t subID, const size_t id, nodeData& data)
 {   
      std::cout << id << "-->" << subID << ": " << "S= " << data.data << "  " << id << "-->" << subID << ": " << "N= " << data.count << "\n";
 }
@@ -15,12 +15,12 @@ bool thread_obj::is_valid()
     return valid;
 }
 
-std::thread::id thread_obj::getID()
+size_t thread_obj::getID()
 {
     return id;
 }
 
-nodeData& thread_obj::get_found_data(std::thread::id id)
+nodeData& thread_obj::get_found_data(size_t id)
 {
     if (data.size() > 0)
     {
@@ -48,7 +48,7 @@ bool thread_obj::subscribe(thread_obj& subscription)
 
 void thread_obj::unsubscribe(thread_obj& subscription)
 {
-    std::thread::id id;
+    size_t id;
     if (data.size() > 0)
     {
         const auto _end(std::end(data));

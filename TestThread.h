@@ -17,8 +17,9 @@ static int unsubscribe_chanse{ 20 };
 static int create_new_node_chanse{ 15 };
 
 void manager();
-void node_function(std::thread::id id);
+size_t get_new_free_id();
+void node_function(size_t id);
 bool new_node();
 int random_chance();
 bool event_happend(int chance);
-void add_data(std::thread::id id_obj, std::thread::id id_data, int value);
+void add_data(size_t id_obj, size_t id_data, int value);
