@@ -6,48 +6,58 @@
 using namespace std;
 using namespace chrono_literals;
 
-mutex mut;
+mutex q_mut;
+
 condition_variable cv;
 vector<thread> nodes;
 vector<thread_obj> objects;
 
 void manager()
 {
+	int con{ 0 };
 	while (!finished)
 	{
 		//delay
-		this_thread::sleep_for(100ms);
+		this_thread::sleep_for(1000ms);
+
 		//delete object if completed
-		for (auto& i : objects)
+		con = 0;
+		for (auto& ob : objects)
 		{
-			if (i.get_completed())
+			if (ob.get_completed())
 			{
-				lock_guard<mutex> lm{ mut };
-				objects.push_back(i);
-				objects.pop_back();
+				con++;
 			}
 		}
+		if (con > count_nodes - 2)
+		{
+			finished = true;
+		}
 	}
+	cout << "Simulation completed\n";
 }
 
 size_t get_new_free_id()
 {
-	lock_guard<mutex> mh{ mut };
-	size_t i_count{0};
 	if (objects.size() > 0)
 	{
-		auto pred([&](thread_obj& obj) {return obj.getID() != i_count; });
-		auto found_obj(find_if(begin(objects), end(objects), pred));
-		if (found_obj != objects.end())
+		for (size_t id = 0; id < 100; id++)
 		{
-			return i_count;
+			bool finded = false;
+			for (auto& i : objects)
+			{
+				if (i.getID() == id)
+				{
+					finded = true;
+					break;
+				}
+			}
+			if(!finded)
+			{
+				return id;
+			}
 		}
-		i_count++;
-		if (i_count > 99)
-		{
-			finished = true;
-			return i_count;
-		}
+	
 	}
 	else
 	{
@@ -55,79 +65,75 @@ size_t get_new_free_id()
 	}
 }
 
+void run(thread_obj& ob)
+{
+	bool run{true};
+	unique_lock<mutex> lock{ q_mut };
+	cv.wait(lock, [&]() {return run; });
+	if (event_happend(create_number_chanse))
+	{
+		ob.get_random_number();
+	}
+	if (event_happend(subscribe_chanse))
+	{
+		ob.subscribe(get_random_object());
+	}
+	if (event_happend(unsubscribe_chanse))
+	{
+		ob.unsubscribe();
+	}
+	run = false;
+}
+
 void node_function(size_t id)
 {
-	create_object(id);
 	thread_obj& object = get_id_object(id);
 	while (!object.get_completed())
 	{
-		if (event_happend(25))
+		run(object);
+		this_thread::sleep_for(500ms);
+		if (object.data.size() == 0)
 		{
-			object.get_random_number();
+			object.completed_obj();
+			break;
 		}
-		if (event_happend(20))
-		{
-			//object.subscribe(get_random_object());
-		}
-		if (event_happend(20))
-		{
-			//object.unsubscribe();
-		}
-		if (event_happend(15))
-		{
-
-		}
-		cout << id << "\n";
-		this_thread::sleep_for(200ms);
 	}
 }
-/////////////////////////////////////
-bool new_node()
-{
-	unique_ptr<thread> temp(new thread{ node_function, get_new_free_id()});
-	std::thread::id id_thread (temp->get_id());
-	nodes.emplace_back(std::move(*temp));
-		
-	const auto pred([&](thread& node) {return node.get_id() == id_thread; });
-	auto found_node(find_if(begin(nodes), end(nodes), pred));
-	found_node->detach();
-	return true;
-}
 
-int random_chance()					
-{
-	return int(rand() % 100 + 1);	
-}
-
-bool event_happend(int chance)		
-{
-	if (random_chance() < chance)	
-	{
-		return true;				
-	}
-	else
-	{
-		return false;				
-	}
-}
 void add_data(size_t id_obj, size_t id_data, int value)
 {
 	nodeData& data (get_data_object(id_obj, id_data));					
 	{
-		lock_guard<mutex> mt{ mut };
 		data.data += value;
 		data.count++;
 	}
 }
 
+
 thread_obj& get_random_object()
 {
 	if(objects.size() != 0)
 	{
-		lock_guard<mutex> lt{ mut };
 		size_t i = (rand() % (objects.size()));
 		thread_obj& temp = objects[i];
 		return temp;
+	}
+}
+
+int random_chance()
+{
+	return int(rand() % 100 + 1);
+}
+
+bool event_happend(int chance)
+{
+	if (random_chance() < chance)
+	{
+		return true;
+	}
+	else
+	{
+		return false;
 	}
 }
 
@@ -155,6 +161,10 @@ thread_obj& get_id_object(size_t id)
 {
 	const auto pred([&](thread_obj& i) {return i.getID() == id; });
 	const auto found_obj(find_if(begin(objects), end(objects), pred));
+	if (found_obj == objects.end())
+	{
+		create_object(id);
+	}
 	return *found_obj;
 }
 
@@ -168,7 +178,7 @@ nodeData& get_data_object(size_t id_ob, size_t id_data)
 
 void create_object(size_t id)
 {
-	objects.emplace_back(move(thread_obj(id)));
+	objects.emplace_back(id);
 }
 
 void remove_subscriber(size_t id_subscriber, size_t id_subscription)
@@ -176,12 +186,13 @@ void remove_subscriber(size_t id_subscriber, size_t id_subscription)
 	thread_obj& temp(get_id_object(id_subscription));
 
 	const auto pred([&](size_t& id) {return id == id_subscriber; });
-	const auto found_obj(find_if(begin(temp.subscriptions), end(temp.subscriptions), pred));
+	const auto found_obj(remove_if(begin(temp.subscriptions), end(temp.subscriptions), pred));
+	temp.subscriptions.erase(found_obj, end(temp.subscriptions));
 }
 
 void remove_object(size_t id)
 {
-	lock_guard<mutex> mu{ mut };
+	lock_guard<mutex> mt{ q_mut };
 	auto pred([&](thread_obj& i) {return i.getID() == id; });
 	const auto new_end(remove_if(begin(objects), end(objects), pred));
 	objects.erase(new_end, objects.end());
@@ -189,25 +200,59 @@ void remove_object(size_t id)
 
 void add_sub_data(thread_obj& subscription, thread_obj& subscriber)
 {
-	lock_guard<mutex> ty{ mut };
-	subscription.subscriptions.emplace_back(subscriber.getID());
-	subscriber.data.emplace_back(subscription.getID ());
+	auto pred([&](size_t& id) {return id == subscriber.getID(); });
+	auto found_id(find_if(begin(subscription.subscriptions), end(subscription.subscriptions), pred));
+	if (found_id == end(subscription.subscriptions))
+	{
+		subscription.subscriptions.emplace_back(subscriber.getID());
+		subscriber.data.emplace_back(subscription.getID());
+	}
 }
 
 int main()
 {
+	int nods, data, sub, unsub;
+	cout << "Enter count nodes(2...99):\n";
+	cin >> nods;
+	if (nods < 100 || nods > 1)
+	{
+		count_nodes = nods;
+	}
+	cout << "Enter chanse to create data(1...99):\n";
+	cin >> data;
+	if (data < 100 || data > 0)
+	{
+		create_number_chanse = data;
+	}
+	cout << "Enter chanse to subscribe(1...99):\n";
+	cin >> sub;
+	if (sub < 100 || sub > 0)
+	{
+		subscribe_chanse = sub;
+	}
+	cout << "Enter chanse to unsubscribe(1...99):\n";
+	cin >> unsub;
+	if (unsub < 100 || unsub > 0)
+	{
+		unsubscribe_chanse = unsub;
+	}
 	thread nodes_manager(manager);
 
 	for (size_t i = 0; i < count_nodes; i++)
 	{
+		objects.emplace_back(i);
 		nodes.emplace_back(node_function, i);
 	}
+	for (auto& i : objects)
+	{
+		i.subscribe(get_random_object());
+	}
 	//Run
-	nodes_manager.join();
 	for (auto& i : nodes)
 	{
 		i.detach();
 	}
+	nodes_manager.join();
 }
 
 // Запуск программы: CTRL+F5 или меню "Отладка" > "Запуск без отладки"
